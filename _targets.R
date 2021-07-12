@@ -11,18 +11,17 @@ tar_option_set(packages = c("tidyverse", "dataRetrieval", "urbnmapr", "rnaturale
 source("1_fetch/src/find_oldest_sites.R")
 source("1_fetch/src/get_site_data.R")
 source("2_process/src/tally_site_obs.R")
+source("2_process/src/summarize_targets.R")
 source("3_visualize/src/map_sites.R")
+source("3_visualize/src/plot_data_coverage.R")
 source("3_visualize/src/plot_site_data.R")
 
 # Configuration
 states <- c('WI','MN','MI', 'IL', 'IN', 'IA')
 parameter <- c('00060')
 
-# Targets
-list(
-  # Identify oldest sites
-  tar_target(oldest_active_sites, find_oldest_sites(states, parameter)),
-
+# Define static branching before targets list
+mapped_by_state_targets <-
   # Pull data for each state's oldest site
   tar_map(
     values = tibble(state_abb = states) %>%
@@ -32,8 +31,40 @@ list(
     # Insert step for tallying data here
     tar_target(tally, tally_site_obs(nwis_data)),
     # Insert step for plotting data here
-    names = state_abb
     tar_target(timeseries_png, plot_site_data(state_plot_files, nwis_data, parameter), format="file"),
+    names = state_abb,
+    unlist = FALSE
+  )
+
+# Targets list
+
+list(
+
+  # Identify oldest sites
+  tar_target(oldest_active_sites, find_oldest_sites(states, parameter)),
+
+  # Branch by state
+  mapped_by_state_targets,
+
+  # Combine the tally branches
+  tar_combine(
+    obs_tallies,
+    mapped_by_state_targets$tally,
+    command = combine_obs_tallies(!!!.x)
+  ),
+
+  tar_combine(
+    summary_state_timeseries_csv,
+    mapped_by_state_targets$timeseries_png,
+    command = summarize_targets('3_visualize/log/summary_state_timeseries.csv', !!!.x),
+    format="file"
+  ),
+
+  # Plot all years, all states observation tallies
+  tar_target(
+    data_coverage_png,
+    plot_data_coverage(obs_tallies, "3_visualize/out/data_coverage.png", parameter),
+    format = "file"
   ),
 
   # Map oldest sites
