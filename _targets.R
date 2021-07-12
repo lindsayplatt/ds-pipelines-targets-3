@@ -32,8 +32,8 @@ list(
     # Insert step for tallying data here
     tar_target(tally, tally_site_obs(nwis_data)),
     # Insert step for plotting data here
-    tar_target(timeseries_png, plot_site_data(state_plot_files, nwis_data, parameter)),
     names = state_abb
+    tar_target(timeseries_png, plot_site_data(state_plot_files, nwis_data, parameter), format="file"),
   ),
 
   # Map oldest sites
