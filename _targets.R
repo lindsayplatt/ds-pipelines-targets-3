@@ -2,7 +2,7 @@
 library(targets)
 library(tarchetypes)
 library(tibble)
-library(dplyr)
+suppressPackageStartupMessages(library(dplyr))
 library(retry)
 
 options(tidyverse.quiet = TRUE)
